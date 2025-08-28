@@ -143,12 +143,15 @@ class SteamCog(commands.Cog):
 
     @commands.command(name="watchlist")
     async def watchlist_cmd(self, ctx):
-        channel_id = ctx.channel.id
-        games = self.state.get(str(channel_id), [])
+        channel_id = str(ctx.channel.id)
+        games = self.state.get(channel_id, [])
         if not games:
             await ctx.reply("Nincs figyelt játék a csatornában.")
-        else:
-            await ctx.reply("Figyelt játékok: " + ", ".join(map(str,games)))
+            return
+
+        # nev (appid) pattern
+        formatted = ", ".join(f"{game['name']} ({game['appid']})" for game in games)
+        await ctx.reply(f"Figyelt játékok: {formatted}")
 
     @tasks.loop(minutes=10)
     async def discount_check(self):
