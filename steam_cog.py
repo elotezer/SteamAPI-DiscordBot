@@ -3,6 +3,7 @@ from discord.ext import commands, tasks
 import aiohttp
 import os
 import json
+import asyncio
 
 DATA_PATH = os.path.join("data", "watchlist.json")
 os.makedirs("data", exist_ok=True)
@@ -146,6 +147,10 @@ class SteamCog(commands.Cog):
                     continue
                 price_str = SteamStoreClient.format_price(details)
                 await channel.send(f"Árfrissítés: {details.get('name','Ismeretlen')} — {price_str}")
+
+    def cog_unload(self):
+        if self.session and not self.session.closed:
+            asyncio.create_task(self.session.close())
 
 async def setup(bot):
     await bot.add_cog(SteamCog(bot))
