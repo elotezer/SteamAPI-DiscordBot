@@ -53,7 +53,7 @@ class SteamStoreClient:
     def format_price(details):
         po = details.get("price_overview")
         if not po:
-            return "Ingyenes vagy nincs ár elérhető."
+            return "Ingyenes vagy elérhető ár."
         initial = po.get("initial", 0) / 100
         final = po.get("final", 0) / 100
         discount = po.get("discount_percent", 0)
