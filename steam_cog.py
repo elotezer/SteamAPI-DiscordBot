@@ -101,5 +101,17 @@ class SteamCog(commands.Cog):
         embed.add_field(name="Ár", value=price_str, inline=True)
         await ctx.reply(embed=embed)
 
+    @commands.command(name="watch")
+    async def watch_cmd(self, ctx, appid: int):
+        channel_id = ctx.channel.id
+        if str(channel_id) not in self.state:
+            self.state[str(channel_id)] = []
+        if appid not in self.state[str(channel_id)]:
+            self.state[str(channel_id)].append(appid)
+            _write_state(self.state)
+            await ctx.reply(f"A(z) {appid} játék hozzáadva a figyelt listához.")
+        else:
+            await ctx.reply(f"A(z) {appid} már szerepel a figyelt listában.")
+
 async def setup(bot):
     await bot.add_cog(SteamCog(bot))
