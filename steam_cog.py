@@ -61,3 +61,41 @@ class SteamStoreClient:
         if discount and final < initial:
             return f"{final:.2f} {currency} (−{discount}% | korábban {initial:.2f} {currency})"
         return f"{final:.2f} {currency}"
+    
+class SteamCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.session = None
+        self.client = None
+        self.state = _read_state()
+        self.check_discounts.start()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        if not self.session or self.session.closed:
+            self.session = aiohttp.ClientSession()
+            self.client = SteamStoreClient(self.session, cc="hu", lang="hungarian")
+
+    @commands.command(name="game")
+    async def game_cmd(self, ctx, *, query: str):
+        appid = None
+        if query.isdigit():
+            appid = int(query)
+        else:
+            items = await self.client.search_app(query)
+            if not items:
+                await ctx.reply("Nincs találat.")
+                return
+            appid = items[0].get("id")
+        details = await self.client.get_app_details(int(appid))
+        if not details:
+            await ctx.reply("Nem sikerült lekérni az adatokat.")
+            return
+        name = details.get("name", "Ismeretlen")
+        price_str = SteamStoreClient.format_price(details)
+        embed = discord.Embed(title=name, url=f"https://store.steampowered.com/app/{appid}", description=details.get("short_description",""))
+        embed.add_field(name="Ár", value=price_str, inline=True)
+        await ctx.reply(embed=embed)
+
+async def setup(bot):
+    await bot.add_cog(SteamCog(bot))
