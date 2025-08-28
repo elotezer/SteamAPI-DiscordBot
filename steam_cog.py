@@ -133,13 +133,15 @@ class SteamCog(commands.Cog):
 
     @commands.command(name="unwatch")
     async def unwatch_cmd(self, ctx, appid: int):
-        channel_id = ctx.channel.id
-        if str(channel_id) in self.state and appid in self.state[str(channel_id)]:
-            self.state[str(channel_id)].remove(appid)
-            _write_state(self.state)
-            await ctx.reply(f"A(z) {appid} játék eltávolítva a figyelt listából.")
-        else:
-            await ctx.reply(f"A(z) {appid} nem szerepel a figyelt listában.")
+        channel_id = str(ctx.channel.id)
+        games = self.state.get(channel_id, [])
+        for game in games:
+            if game["appid"] == appid:
+                games.remove(game)
+                _write_state(self.state)
+                await ctx.reply(f"{game['name']} eltávolítva a figyelt listából.")
+                return
+        await ctx.reply(f"A(z) {appid} nem szerepel a figyelt listában.")
 
     @commands.command(name="watchlist")
     async def watchlist_cmd(self, ctx):
