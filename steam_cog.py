@@ -105,10 +105,10 @@ class SteamCog(commands.Cog):
             description=details.get("short_description","")
         )
 
-        # thumbnail-be a kep
+        # thumbnail kep nagyobb
         header_image = details.get("header_image")
         if header_image:
-            embed.set_thumbnail(url=header_image)
+            embed.set_image(url=header_image)
 
         embed.add_field(name="Ár", value=price_str, inline=True)
         await ctx.reply(embed=embed)
