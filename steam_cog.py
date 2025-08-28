@@ -103,16 +103,33 @@ class SteamCog(commands.Cog):
         await ctx.reply(embed=embed)
 
     @commands.command(name="watch")
-    async def watch_cmd(self, ctx, appid: int):
-        channel_id = ctx.channel.id
-        if str(channel_id) not in self.state:
-            self.state[str(channel_id)] = []
-        if appid not in self.state[str(channel_id)]:
-            self.state[str(channel_id)].append(appid)
-            _write_state(self.state)
-            await ctx.reply(f"A(z) {appid} játék hozzáadva a figyelt listához.")
+    async def watch_cmd(self, ctx, query: str):
+        if not self.client:
+            await ctx.reply("A Steam kliens még nem készült el.")
+            return
+        if query.isdigit():
+            appid = int(query)
+            details = await self.client.get_app_details(appid)
+            name = details.get("name", f"Ismeretlen ({appid})") if details else f"Ismeretlen ({appid})"
         else:
-            await ctx.reply(f"A(z) {appid} már szerepel a figyelt listában.")
+            items = await self.client.search_app(query)
+            if not items:
+                await ctx.reply("Nincs találat erre a névre.")
+                return
+            appid = items[0]["id"]
+            name = items[0]["name"]
+
+        channel_id = str(ctx.channel.id)
+        if channel_id not in self.state:
+            self.state[channel_id] = []
+
+        if any(game["appid"]==appid for game in self.state[channel_id]):
+            await ctx.reply(f"{name} már szerepel a figyelt listában.")
+            return
+
+        self.state[channel_id].append({"appid": appid, "name": name})
+        _write_state(self.state)
+        await ctx.reply(f"{name} hozzáadva a figyeléshez.")
 
     @commands.command(name="unwatch")
     async def unwatch_cmd(self, ctx, appid: int):
