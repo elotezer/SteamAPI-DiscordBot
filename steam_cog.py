@@ -119,9 +119,18 @@ class SteamCog(commands.Cog):
         if str(channel_id) in self.state and appid in self.state[str(channel_id)]:
             self.state[str(channel_id)].remove(appid)
             _write_state(self.state)
-            await ctx.reply(f"A(z) {appid} játék eltávolítva a figyelésből.")
+            await ctx.reply(f"A(z) {appid} játék eltávolítva a figyelt listából.")
         else:
             await ctx.reply(f"A(z) {appid} nem szerepel a figyelt listában.")
+
+    @commands.command(name="watchlist")
+    async def watchlist_cmd(self, ctx):
+        channel_id = ctx.channel.id
+        games = self.state.get(str(channel_id), [])
+        if not games:
+            await ctx.reply("Nincs figyelt játék a csatornában.")
+        else:
+            await ctx.reply("Figyelt játékok: " + ", ".join(map(str,games)))
 
 async def setup(bot):
     await bot.add_cog(SteamCog(bot))
