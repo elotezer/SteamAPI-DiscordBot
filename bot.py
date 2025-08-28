@@ -2,6 +2,8 @@ import discord
 from dotenv import load_dotenv
 import os
 from discord.ext import commands
+import asyncio
+import threading
 
 load_dotenv()
 
@@ -24,5 +26,16 @@ bot = MyBot()
 async def on_ready():
     print(f"Bejelentkezve: {bot.user}")
     print("Bot online állapotban van!")
+
+
+def console_listener(bot):
+    while True:
+        cmd = input()
+        if cmd.lower() == "stop":
+            print("Bot leállítva...")
+            asyncio.run_coroutine_threadsafe(bot.close(), bot.loop)
+            break
+
+threading.Thread(target=console_listener, args=(bot,), daemon=True).start()
 
 bot.run(DISCORD_TOKEN)
