@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import aiohttp
 import os
 import json
@@ -131,6 +131,21 @@ class SteamCog(commands.Cog):
             await ctx.reply("Nincs figyelt játék a csatornában.")
         else:
             await ctx.reply("Figyelt játékok: " + ", ".join(map(str,games)))
+
+    @tasks.loop(minutes=10)
+    async def discount_check(self):
+        if not self.client:
+            return
+        for ch_id, apps in self.state.items():
+            channel = self.bot.get_channel(int(ch_id))
+            if not channel:
+                continue
+            for appid in apps:
+                details = await self.client.get_app_details(appid)
+                if not details:
+                    continue
+                price_str = SteamStoreClient.format_price(details)
+                await channel.send(f"Árfrissítés: {details.get('name','Ismeretlen')} — {price_str}")
 
 async def setup(bot):
     await bot.add_cog(SteamCog(bot))
