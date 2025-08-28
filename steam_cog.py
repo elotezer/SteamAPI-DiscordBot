@@ -113,5 +113,15 @@ class SteamCog(commands.Cog):
         else:
             await ctx.reply(f"A(z) {appid} már szerepel a figyelt listában.")
 
+    @commands.command(name="unwatch")
+    async def unwatch_cmd(self, ctx, appid: int):
+        channel_id = ctx.channel.id
+        if str(channel_id) in self.state and appid in self.state[str(channel_id)]:
+            self.state[str(channel_id)].remove(appid)
+            _write_state(self.state)
+            await ctx.reply(f"A(z) {appid} játék eltávolítva a figyelésből.")
+        else:
+            await ctx.reply(f"A(z) {appid} nem szerepel a figyelt listában.")
+
 async def setup(bot):
     await bot.add_cog(SteamCog(bot))
