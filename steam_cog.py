@@ -98,7 +98,18 @@ class SteamCog(commands.Cog):
 
         name = details.get("name", "Ismeretlen")
         price_str = SteamStoreClient.format_price(details)
-        embed = discord.Embed(title=name, url=f"https://store.steampowered.com/app/{appid}", description=details.get("short_description",""))
+
+        embed = discord.Embed(
+            title=name,
+            url=f"https://store.steampowered.com/app/{appid}",
+            description=details.get("short_description","")
+        )
+
+        # thumbnail-be a kep
+        header_image = details.get("header_image")
+        if header_image:
+            embed.set_thumbnail(url=header_image)
+
         embed.add_field(name="Ár", value=price_str, inline=True)
         await ctx.reply(embed=embed)
 
