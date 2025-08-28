@@ -1,2 +1,4 @@
 .env
 id_rsa
+__pychache__
+data
