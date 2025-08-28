@@ -1,7 +1,6 @@
 import discord
 from dotenv import load_dotenv
 import os
-import asyncio
 from discord.ext import commands
 
 load_dotenv()
@@ -11,15 +10,19 @@ STEAM_API_KEY = os.getenv("STEAM_API_KEY")
 
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 
+class MyBot(commands.Bot):
+    def __init__(self):
+        super().__init__(command_prefix="!", intents=intents, help_command=None)
 
-async def main():
-    async with bot:
-        await bot.load_extension("steam_cog")
-        await bot.start(DISCORD_TOKEN)
+    async def setup_hook(self):
+        await self.load_extension("steam_cog")  # cog betoltes
 
-if __name__ == "__main__":
-    asyncio.run(main())
+bot = MyBot()
 
-    
+@bot.event
+async def on_ready():
+    print(f"Bejelentkezve: {bot.user}")
+    print("Bot online állapotban van!")
+
+bot.run(DISCORD_TOKEN)
