@@ -246,24 +246,49 @@ class SteamCog(commands.Cog):
         await ctx.reply(embed=embed)
     
     @commands.command(name="status")
-    async def status_cmd(self, ctx, appid: int):
+    async def status_cmd(self, ctx, *, query: str):
         if not self.client:
-            await ctx.reply("A Steam kliens még nem készült el.", ephemeral=True)
+            await ctx.reply("A Steam kliens még nem készült el.")
             return
+
+        if query.isdigit():
+            appid = int(query)
+        else:
+            items = await self.client.search_app(query)
+            if not items:
+                await ctx.reply("Nincs találat erre a névre.")
+                return
+            appid = items[0]["id"]
 
         details = await self.client.get_app_details(appid)
         if not details:
-            embed = discord.Embed(description="❌ Nem sikerült lekérni az adatokat.")
-            await ctx.reply(embed=embed)
+            await ctx.reply("Nem sikerült lekérni az adatokat.")
             return
 
-        multiplayer = details.get("required_age", "N/A")
-        embed = discord.Embed(title=f"{details.get('name','Ismeretlen')} státusz", url=f"https://store.steampowered.com/app/{appid}")
+        categories = [c["description"] for c in details.get("categories", [])]
+        multiplayer = "Igen" if any("Multiplayer" in c for c in categories) else "Nem"
+        coop = "Igen" if any("Co-op" in c for c in categories) else "Nem"
+        age = details.get("required_age", 0)
+        age_str = f"{age}+" if age else "Nincs korhatár"
+        rating = details.get("metacritic", {}).get("score")
+        rating_str = str(rating) if rating else "Ismeretlen"
+
+        embed = discord.Embed(
+            title=details.get("name","Ismeretlen"),
+            url=f"https://store.steampowered.com/app/{appid}",
+            description=details.get("short_description","")
+        )
         header_image = details.get("header_image")
         if header_image:
             embed.set_image(url=header_image)
-        embed.add_field(name="Multiplayer info", value=str(multiplayer), inline=True)
+
+        embed.add_field(name="Multiplayer", value=multiplayer, inline=True)
+        embed.add_field(name="Co-op", value=coop, inline=True)
+        embed.add_field(name="Korhatár", value=age_str, inline=True)
+        embed.add_field(name="Értékelés", value=rating_str, inline=True)
+
         await ctx.reply(embed=embed)
+
 
     @commands.command(name="compare")
     async def compare_cmd(self, ctx, *, query: str):
@@ -302,8 +327,8 @@ class SteamCog(commands.Cog):
                 s += int(release.split("-")[0])
             except:
                 s += 0
-            rating = details.get("metacritic", {}).get("score",0) or 0
-            s += rating
+            rating = details.get("metacritic", {}).get("score")
+            s += rating if rating else 0
             return s
 
         score0 = score(results[0]["details"])
@@ -312,8 +337,15 @@ class SteamCog(commands.Cog):
         winner = 0 if score0 >= score1 else 1
         loser = 1 - winner
 
-        embed = discord.Embed(title="Játék összehasonlítás", description=f"{results[winner]['name']} ✅ vs {results[loser]['name']} ❌")
-        embed.add_field(name="Ár+Megjelenés+Rating pontszámok", value=f"{results[0]['name']}: {score0}\n{results[1]['name']}: {score1}", inline=False)
+        embed = discord.Embed(
+            title="Játék összehasonlítás",
+            description=f"{results[winner]['name']} ✅ vs {results[loser]['name']} ❌"
+        )
+        embed.add_field(
+            name="Pontszámok (Ár + Megjelenés + Rating)",
+            value=f"{results[0]['name']}: {score0}\n{results[1]['name']}: {score1}",
+            inline=False
+        )
         header_image = results[winner]['details'].get("header_image")
         if header_image:
             embed.set_image(url=header_image)
