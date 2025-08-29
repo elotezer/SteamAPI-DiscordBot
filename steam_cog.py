@@ -266,29 +266,57 @@ class SteamCog(commands.Cog):
         await ctx.reply(embed=embed)
 
     @commands.command(name="compare")
-    async def compare_cmd(self, ctx, appid1: int, appid2: int):
+    async def compare_cmd(self, ctx, *, query: str):
         if not self.client:
-            await ctx.reply("A Steam kliens még nem készült el.", ephemeral=True)
+            await ctx.reply("A Steam kliens még nem készült el.")
             return
 
-        details1 = await self.client.get_app_details(appid1)
-        details2 = await self.client.get_app_details(appid2)
-
-        if not details1 or not details2:
-            embed = discord.Embed(description="❌ Nem sikerült lekérni az adatokat az egyik vagy mindkét játékhoz.")
-            await ctx.reply(embed=embed)
+        games = [q.strip() for q in query.split(",")]
+        if len(games) != 2:
+            await ctx.reply("Kérlek pontosan két játékot adj meg vesszővel elválasztva.")
             return
 
-        price1 = SteamStoreClient.format_price(details1)
-        price2 = SteamStoreClient.format_price(details2)
+        results = []
+        for game in games:
+            if game.isdigit():
+                appid = int(game)
+            else:
+                items = await self.client.search_app(game)
+                if not items:
+                    await ctx.reply(f"Nincs találat erre a névre: {game}")
+                    return
+                appid = items[0]["id"]
+            details = await self.client.get_app_details(appid)
+            if not details:
+                await ctx.reply(f"Nem sikerült lekérni az adatokat: {game}")
+                return
+            results.append({"appid": appid, "name": details.get("name","Ismeretlen"), "details": details})
 
-        embed = discord.Embed(title="Játékok összehasonlítása")
-        embed.add_field(name=f"{details1.get('name','Ismeretlen')} ({appid1})", value=f"Ár: {price1}", inline=True)
-        embed.add_field(name=f"{details2.get('name','Ismeretlen')} ({appid2})", value=f"Ár: {price2}", inline=True)
+        def score(details):
+            s = 0
+            po = details.get("price_overview")
+            price = po.get("final",0)/100 if po else 0
+            s += 100 - price
+            release = details.get("release_date", {}).get("date", "1970-01-01")
+            try:
+                s += int(release.split("-")[0])
+            except:
+                s += 0
+            rating = details.get("metacritic", {}).get("score",0) or 0
+            s += rating
+            return s
 
-        header_image1 = details1.get("header_image")
-        if header_image1:
-            embed.set_image(url=header_image1)
+        score0 = score(results[0]["details"])
+        score1 = score(results[1]["details"])
+
+        winner = 0 if score0 >= score1 else 1
+        loser = 1 - winner
+
+        embed = discord.Embed(title="Játék összehasonlítás", description=f"{results[winner]['name']} ✅ vs {results[loser]['name']} ❌")
+        embed.add_field(name="Ár+Megjelenés+Rating pontszámok", value=f"{results[0]['name']}: {score0}\n{results[1]['name']}: {score1}", inline=False)
+        header_image = results[winner]['details'].get("header_image")
+        if header_image:
+            embed.set_image(url=header_image)
 
         await ctx.reply(embed=embed)
 
