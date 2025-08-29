@@ -87,7 +87,7 @@ class SteamCog(commands.Cog):
         else:
             items = await self.client.search_app(query)
             if not items:
-                await ctx.reply("Nincs találat.")
+                await ctx.reply("Nincs találat erre a névre.")
                 return
             appid = items[0].get("id")
 
@@ -98,19 +98,30 @@ class SteamCog(commands.Cog):
 
         name = details.get("name", "Ismeretlen")
         price_str = SteamStoreClient.format_price(details)
+        release = details.get("release_date", {}).get("date", "Ismeretlen")
+        publisher = ", ".join(details.get("publishers", [])) or "Ismeretlen"
+        developer = ", ".join(details.get("developers", [])) or "Ismeretlen"
+        categories = [c["description"] for c in details.get("categories", [])]
+        multiplayer = "Igen" if any("Multiplayer" in c for c in categories) else "Nem"
+        coop = "Igen" if any("Co-op" in c for c in categories) else "Nem"
+        rating = details.get("metacritic", {}).get("score", "Ismeretlen")
+        age = details.get("required_age", 0)
+        age_str = f"{age}+" if age else "Nincs korhatár"
 
-        embed = discord.Embed(
-            title=name,
-            url=f"https://store.steampowered.com/app/{appid}",
-            description=details.get("short_description","")
-        )
-
-        # thumbnail kep nagyobb
+        embed = discord.Embed(title=name, url=f"https://store.steampowered.com/app/{appid}", description=details.get("short_description",""))
         header_image = details.get("header_image")
         if header_image:
             embed.set_image(url=header_image)
 
         embed.add_field(name="Ár", value=price_str, inline=True)
+        embed.add_field(name="Megjelenés", value=release, inline=True)
+        embed.add_field(name="Kiadó", value=publisher, inline=True)
+        embed.add_field(name="Fejlesztő", value=developer, inline=True)
+        embed.add_field(name="Multiplayer", value=multiplayer, inline=True)
+        embed.add_field(name="Co-op", value=coop, inline=True)
+        embed.add_field(name="Értékelés", value=rating, inline=True)
+        embed.add_field(name="Korhatár", value=age_str, inline=True)
+
         await ctx.reply(embed=embed)
 
     @commands.command(name="watch")
