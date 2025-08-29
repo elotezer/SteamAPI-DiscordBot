@@ -233,6 +233,26 @@ class SteamCog(commands.Cog):
             embed.set_image(url=header_image)
         embed.add_field(name="Ár", value=price_str, inline=True)
         await ctx.reply(embed=embed)
+    
+    @commands.command(name="status")
+    async def status_cmd(self, ctx, appid: int):
+        if not self.client:
+            await ctx.reply("A Steam kliens még nem készült el.", ephemeral=True)
+            return
+
+        details = await self.client.get_app_details(appid)
+        if not details:
+            embed = discord.Embed(description="❌ Nem sikerült lekérni az adatokat.")
+            await ctx.reply(embed=embed)
+            return
+
+        multiplayer = details.get("required_age", "N/A")
+        embed = discord.Embed(title=f"{details.get('name','Ismeretlen')} státusz", url=f"https://store.steampowered.com/app/{appid}")
+        header_image = details.get("header_image")
+        if header_image:
+            embed.set_image(url=header_image)
+        embed.add_field(name="Multiplayer info", value=str(multiplayer), inline=True)
+        await ctx.reply(embed=embed)
 
     @tasks.loop(minutes=10)
     async def discount_check(self):
