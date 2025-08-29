@@ -207,6 +207,33 @@ class SteamCog(commands.Cog):
         embed.add_field(name="Jelenlegi ár", value=price_str, inline=True)
         await ctx.reply(embed=embed)
 
+    @commands.command(name="randomgame")
+    async def randomgame_cmd(self, ctx):
+        if not self.client:
+            await ctx.reply("A Steam kliens még nem készült el.", ephemeral=True)
+            return
+
+        import random
+        items = await self.client.search_app("a")
+        if not items:
+            embed = discord.Embed(description="❌ Nem sikerült találni játékot.")
+            await ctx.reply(embed=embed)
+            return
+
+        game = random.choice(items)
+        details = await self.client.get_app_details(game["id"])
+        if not details:
+            embed = discord.Embed(description="❌ Nem sikerült lekérni az adatokat.")
+            await ctx.reply(embed=embed)
+            return
+        price_str = SteamStoreClient.format_price(details)
+        embed = discord.Embed(title=details.get("name","Ismeretlen"), url=f"https://store.steampowered.com/app/{game['id']}", description=details.get("short_description",""))
+        header_image = details.get("header_image")
+        if header_image:
+            embed.set_image(url=header_image)
+        embed.add_field(name="Ár", value=price_str, inline=True)
+        await ctx.reply(embed=embed)
+
     @tasks.loop(minutes=10)
     async def discount_check(self):
         if not self.client:
