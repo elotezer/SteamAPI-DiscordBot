@@ -254,6 +254,33 @@ class SteamCog(commands.Cog):
         embed.add_field(name="Multiplayer info", value=str(multiplayer), inline=True)
         await ctx.reply(embed=embed)
 
+    @commands.command(name="compare")
+    async def compare_cmd(self, ctx, appid1: int, appid2: int):
+        if not self.client:
+            await ctx.reply("A Steam kliens még nem készült el.", ephemeral=True)
+            return
+
+        details1 = await self.client.get_app_details(appid1)
+        details2 = await self.client.get_app_details(appid2)
+
+        if not details1 or not details2:
+            embed = discord.Embed(description="❌ Nem sikerült lekérni az adatokat az egyik vagy mindkét játékhoz.")
+            await ctx.reply(embed=embed)
+            return
+
+        price1 = SteamStoreClient.format_price(details1)
+        price2 = SteamStoreClient.format_price(details2)
+
+        embed = discord.Embed(title="Játékok összehasonlítása")
+        embed.add_field(name=f"{details1.get('name','Ismeretlen')} ({appid1})", value=f"Ár: {price1}", inline=True)
+        embed.add_field(name=f"{details2.get('name','Ismeretlen')} ({appid2})", value=f"Ár: {price2}", inline=True)
+
+        header_image1 = details1.get("header_image")
+        if header_image1:
+            embed.set_image(url=header_image1)
+
+        await ctx.reply(embed=embed)
+
     @tasks.loop(minutes=10)
     async def discount_check(self):
         if not self.client:
