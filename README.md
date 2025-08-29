@@ -5,16 +5,22 @@ A Steam API-t használva, valós idejű játékadatokat, árakat és leárazáso
 ## Fő funkciók
 
 - **Játék keresés**: `!game <név vagy AppID>`  
-  Lekérheted a játék adatait, árát és leírását.
+  Lekérheted a játék adatait, árát, leírását, megjelenését, kiadóját és korhatárt.
 
 - **Figyelés (Watchlist)**: `!watch <név vagy AppID>`  
-  Hozzáadhatsz játékokat a figyeléshez. A bot a játék nevét és AppID-jét tárolja.
+  Hozzáadhatsz játékokat a figyeléshez. A bot a játék nevét és AppID-jét tárolja, értesít leárazásról.
 
 - **Figyelés törlése**: `!unwatch <AppID>`  
   Eltávolítja a játékot a watchlistből.
 
 - **Figyelt játékok listája**: `!watchlist`  
   Megjeleníti a figyelt játékokat `Név (AppID)` formátumban.
+
+- **Játék státusz**: `!status <név vagy AppID>`  
+  Megjeleníti a játék rövid leírását, multiplayer és co-op információt, valamint korhatárt és képet.
+
+- **Összehasonlítás**: `!compare <játék1>, <játék2>`  
+  Összehasonlítja két játék árát, megjelenését és ratingjét, a nyertes játék képe megjelenik az embedben.
 
 - **Automatikus leárazás figyelés**  
   A bot ellenőrzi a figyelt játékok árait, és értesítést küld, ha leárazás történik.
@@ -54,7 +60,7 @@ python bot.py
 
 ## Hogyan működik
 
-- `!game <játék>`: a játék leírását és nagy képét jeleníti meg
+- `!game <játék>`: a játék leírását és képét jeleníti meg
 - `!watchlist`: a figyelt játékok listája
 - Értesítés leárazáskor automatikusan
 
