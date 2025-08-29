@@ -116,8 +116,9 @@ class SteamCog(commands.Cog):
     @commands.command(name="watch")
     async def watch_cmd(self, ctx, query: str):
         if not self.client:
-            await ctx.reply("A Steam kliens még nem készült el.")
+            await ctx.reply("A Steam kliens még nem készült el.", ephemeral=True)
             return
+
         if query.isdigit():
             appid = int(query)
             details = await self.client.get_app_details(appid)
@@ -125,7 +126,8 @@ class SteamCog(commands.Cog):
         else:
             items = await self.client.search_app(query)
             if not items:
-                await ctx.reply("Nincs találat erre a névre.")
+                embed = discord.Embed(description="❌ Nincs találat erre a névre.")
+                await ctx.reply(embed=embed)
                 return
             appid = items[0]["id"]
             name = items[0]["name"]
@@ -134,13 +136,15 @@ class SteamCog(commands.Cog):
         if channel_id not in self.state:
             self.state[channel_id] = []
 
-        if any(game["appid"]==appid for game in self.state[channel_id]):
-            await ctx.reply(f"{name} már szerepel a figyelt listában.")
+        if any(game["appid"] == appid for game in self.state[channel_id]):
+            embed = discord.Embed(description=f"❌ {name} már szerepel a figyelt listában.")
+            await ctx.reply(embed=embed)
             return
 
         self.state[channel_id].append({"appid": appid, "name": name})
         _write_state(self.state)
-        await ctx.reply(f"{name} hozzáadva a figyeléshez.")
+        embed = discord.Embed(description=f"✅ {name} hozzáadva a figyeléshez.")
+        await ctx.reply(embed=embed)
 
     @commands.command(name="unwatch")
     async def unwatch_cmd(self, ctx, appid: int):
@@ -150,21 +154,24 @@ class SteamCog(commands.Cog):
             if game["appid"] == appid:
                 games.remove(game)
                 _write_state(self.state)
-                await ctx.reply(f"{game['name']} eltávolítva a figyelt listából.")
+                embed = discord.Embed(description=f"✅ {game['name']} eltávolítva a figyelt listából.")
+                await ctx.reply(embed=embed)
                 return
-        await ctx.reply(f"A(z) {appid} nem szerepel a figyelt listában.")
+        embed = discord.Embed(description=f"❌ A(z) {appid} nem szerepel a figyelt listában.")
+        await ctx.reply(embed=embed)
 
-    @commands.command(name="watchlist")
-    async def watchlist_cmd(self, ctx):
-        channel_id = str(ctx.channel.id)
-        games = self.state.get(channel_id, [])
-        if not games:
-            await ctx.reply("Nincs figyelt játék a csatornában.")
-            return
-
-        # nev (appid) pattern
-        formatted = ", ".join(f"{game['name']} ({game['appid']})" for game in games)
-        await ctx.reply(f"Figyelt játékok: {formatted}")
+    @commands.command(name="watchlist")  
+    async def watchlist_cmd(self, ctx):  
+        channel_id = str(ctx.channel.id)  
+        games = self.state.get(channel_id, [])  
+        if not games:  
+            await ctx.reply("Nincs figyelt játék a csatornában.")  
+            return  
+        embed = discord.Embed(title="Watchlist", color=0x1b2838)  
+        for game in games:  
+            embed.add_field(name=f"{game['name']} ({game['appid']})", value=" ", inline=False)  
+        embed.set_footer(text="SteamAPI 5000")  
+        await ctx.reply(embed=embed)
 
     @tasks.loop(minutes=10)
     async def discount_check(self):
