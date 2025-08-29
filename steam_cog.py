@@ -173,6 +173,40 @@ class SteamCog(commands.Cog):
         embed.set_footer(text="SteamAPI 5000")  
         await ctx.reply(embed=embed)
 
+    @commands.command(name="discount")
+    async def discount_cmd(self, ctx, query: str):
+        if not self.client:
+            await ctx.reply("A Steam kliens még nem készült el.", ephemeral=True)
+            return
+
+        if query.isdigit():
+            appid = int(query)
+        else:
+            items = await self.client.search_app(query)
+            if not items:
+                embed = discord.Embed(description="❌ Nincs találat erre a névre.")
+                await ctx.reply(embed=embed)
+                return
+            appid = items[0]["id"]
+
+        details = await self.client.get_app_details(appid)
+        if not details:
+            embed = discord.Embed(description="❌ Nem sikerült lekérni az adatokat.")
+            await ctx.reply(embed=embed)
+            return
+
+        price_str = SteamStoreClient.format_price(details)
+        embed = discord.Embed(
+            title=details.get("name", "Ismeretlen"),
+            url=f"https://store.steampowered.com/app/{appid}",
+            description=f"Ár ellenőrzés:"
+        )
+        header_image = details.get("header_image")
+        if header_image:
+            embed.set_image(url=header_image)
+        embed.add_field(name="Jelenlegi ár", value=price_str, inline=True)
+        await ctx.reply(embed=embed)
+
     @tasks.loop(minutes=10)
     async def discount_check(self):
         if not self.client:
