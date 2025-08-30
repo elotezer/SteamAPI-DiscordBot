@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands, tasks
+from discord import app_commands
 import aiohttp
 import os
 import json
@@ -75,25 +76,26 @@ class SteamCog(commands.Cog):
             self.client = SteamStoreClient(self.session, cc="hu", lang="hungarian")
         print(f"{self.bot.user} online állapotban!")
 
-    @commands.command(name="game")
-    async def game_cmd(self, ctx, *, query: str):
+    @app_commands.command(name="game", description="Játék adatainak lekérése név vagy AppID alapján")
+    @app_commands.describe(query="Add meg a játék nevét vagy AppID-ját")
+    async def game_cmd(self, interaction: discord.Interaction, query: str):
         if not self.client:
-            await ctx.reply("A Steam kliens még nem készült el. Próbáld újra pár másodperc múlva.")
+            await interaction.response.send_message("A Steam kliens még nem készült el.", ephemeral=True)
             return
+        await interaction.response.defer(thinking=True)
 
-        appid = None
         if query.isdigit():
             appid = int(query)
         else:
             items = await self.client.search_app(query)
             if not items:
-                await ctx.reply("Nincs találat erre a névre.")
+                await interaction.followup.send("Nincs találat erre a névre.")
                 return
             appid = items[0].get("id")
 
         details = await self.client.get_app_details(int(appid))
         if not details:
-            await ctx.reply("Nem sikerült lekérni az adatokat.")
+            await interaction.followup.send("Nem sikerült lekérni az adatokat.")
             return
 
         name = details.get("name", "Ismeretlen")
@@ -108,27 +110,32 @@ class SteamCog(commands.Cog):
         age = details.get("required_age", 0)
         age_str = f"{age}+" if age else "Nincs korhatár"
 
-        embed = discord.Embed(title=name, url=f"https://store.steampowered.com/app/{appid}", description=details.get("short_description",""))
+        embed = discord.Embed(
+            title=name,
+            url=f"https://store.steampowered.com/app/{appid}",
+            description=details.get("short_description","")
+        )
         header_image = details.get("header_image")
         if header_image:
             embed.set_image(url=header_image)
-
         embed.add_field(name="Ár", value=price_str, inline=True)
         embed.add_field(name="Megjelenés", value=release, inline=True)
         embed.add_field(name="Kiadó", value=publisher, inline=True)
         embed.add_field(name="Fejlesztő", value=developer, inline=True)
         embed.add_field(name="Multiplayer", value=multiplayer, inline=True)
         embed.add_field(name="Co-op", value=coop, inline=True)
-        embed.add_field(name="Értékelés", value=rating, inline=True)
+        embed.add_field(name="Értékelés", value=str(rating), inline=True)
         embed.add_field(name="Korhatár", value=age_str, inline=True)
 
-        await ctx.reply(embed=embed)
+        await interaction.followup.send(embed=embed)
 
-    @commands.command(name="watch")
-    async def watch_cmd(self, ctx, query: str):
+    @app_commands.command(name="watch", description="Játék figyelése név vagy AppID alapján")
+    @app_commands.describe(query="Add meg a játék nevét vagy AppID-ját")
+    async def watch_cmd(self, interaction: discord.Interaction, query: str):
         if not self.client:
-            await ctx.reply("A Steam kliens még nem készült el.", ephemeral=True)
+            await interaction.response.send_message("A Steam kliens még nem készült el.", ephemeral=True)
             return
+        await interaction.response.defer(thinking=True)
 
         if query.isdigit():
             appid = int(query)
@@ -137,132 +144,134 @@ class SteamCog(commands.Cog):
         else:
             items = await self.client.search_app(query)
             if not items:
-                embed = discord.Embed(description="❌ Nincs találat erre a névre.")
-                await ctx.reply(embed=embed)
+                await interaction.followup.send(embed=discord.Embed(description="❌ Nincs találat erre a névre."))
                 return
             appid = items[0]["id"]
             name = items[0]["name"]
 
-        channel_id = str(ctx.channel.id)
+        channel_id = str(interaction.channel.id)
         if channel_id not in self.state:
             self.state[channel_id] = []
 
         if any(game["appid"] == appid for game in self.state[channel_id]):
-            embed = discord.Embed(description=f"❌ {name} már szerepel a figyelt listában.")
-            await ctx.reply(embed=embed)
+            await interaction.followup.send(embed=discord.Embed(description=f"❌ {name} már szerepel a figyelt listában."))
             return
 
         self.state[channel_id].append({"appid": appid, "name": name})
         _write_state(self.state)
-        embed = discord.Embed(description=f"✅ {name} hozzáadva a figyeléshez.")
-        await ctx.reply(embed=embed)
+        await interaction.followup.send(embed=discord.Embed(description=f"✅ {name} hozzáadva a figyeléshez."))
 
-    @commands.command(name="unwatch")
-    async def unwatch_cmd(self, ctx, appid: int):
-        channel_id = str(ctx.channel.id)
+    @app_commands.command(name="unwatch", description="Eltávolít egy játékot a figyelésből")
+    @app_commands.describe(appid="Add meg a játék AppID-ját")
+    async def unwatch_cmd(self, interaction: discord.Interaction, appid: int):
+        channel_id = str(interaction.channel.id)
         games = self.state.get(channel_id, [])
         for game in games:
             if game["appid"] == appid:
                 games.remove(game)
                 _write_state(self.state)
-                embed = discord.Embed(description=f"✅ {game['name']} eltávolítva a figyelt listából.")
-                await ctx.reply(embed=embed)
+                await interaction.response.send_message(embed=discord.Embed(description=f"✅ {game['name']} eltávolítva a figyelt listából."))
                 return
-        embed = discord.Embed(description=f"❌ A(z) {appid} nem szerepel a figyelt listában.")
-        await ctx.reply(embed=embed)
+        await interaction.response.send_message(embed=discord.Embed(description=f"❌ A(z) {appid} nem szerepel a figyelt listában."))
 
-    @commands.command(name="watchlist")  
-    async def watchlist_cmd(self, ctx):  
-        channel_id = str(ctx.channel.id)  
-        games = self.state.get(channel_id, [])  
-        if not games:  
-            await ctx.reply("Nincs figyelt játék a csatornában.")  
-            return  
-        embed = discord.Embed(title="Watchlist", color=0x1b2838)  
-        for game in games:  
-            embed.add_field(name=f"{game['name']} ({game['appid']})", value=" ", inline=False)  
-        embed.set_footer(text="SteamAPI 5000")  
-        await ctx.reply(embed=embed)
-
-    @commands.command(name="discount")
-    async def discount_cmd(self, ctx, query: str):
-        if not self.client:
-            await ctx.reply("A Steam kliens még nem készült el.", ephemeral=True)
+    @app_commands.command(name="watchlist", description="Figyelt játékok listázása")
+    async def watchlist_cmd(self, interaction: discord.Interaction):
+        channel_id = str(interaction.channel.id)
+        games = self.state.get(channel_id, [])
+        if not games:
+            await interaction.response.send_message("Nincs figyelt játék a csatornában.")
             return
+        embed = discord.Embed(title="Watchlist", color=0x1b2838)
+        for game in games:
+            embed.add_field(name=f"{game['name']} ({game['appid']})", value=" ", inline=False)
+        embed.set_footer(text="SteamAPI 5000")
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="discount", description="Aktuális ár/leárazás megjelenítése")
+    @app_commands.describe(query="Add meg a játék nevét vagy AppID-ját")
+    async def discount_cmd(self, interaction: discord.Interaction, query: str):
+        if not self.client:
+            await interaction.response.send_message("A Steam kliens még nem készült el.", ephemeral=True)
+            return
+        await interaction.response.defer(thinking=True)
 
         if query.isdigit():
             appid = int(query)
         else:
             items = await self.client.search_app(query)
             if not items:
-                embed = discord.Embed(description="❌ Nincs találat erre a névre.")
-                await ctx.reply(embed=embed)
+                await interaction.followup.send(embed=discord.Embed(description="❌ Nincs találat erre a névre."))
                 return
             appid = items[0]["id"]
 
         details = await self.client.get_app_details(appid)
         if not details:
-            embed = discord.Embed(description="❌ Nem sikerült lekérni az adatokat.")
-            await ctx.reply(embed=embed)
+            await interaction.followup.send(embed=discord.Embed(description="❌ Nem sikerült lekérni az adatokat."))
             return
 
         price_str = SteamStoreClient.format_price(details)
         embed = discord.Embed(
             title=details.get("name", "Ismeretlen"),
             url=f"https://store.steampowered.com/app/{appid}",
-            description=f"Ár ellenőrzés:"
+            description="Ár ellenőrzés:"
         )
         header_image = details.get("header_image")
         if header_image:
             embed.set_image(url=header_image)
         embed.add_field(name="Jelenlegi ár", value=price_str, inline=True)
-        await ctx.reply(embed=embed)
+        await interaction.followup.send(embed=embed)
 
-    @commands.command(name="randomgame")
-    async def randomgame_cmd(self, ctx):
+    @app_commands.command(name="randomgame", description="Véletlenszerű játék a Store-ból")
+    async def randomgame_cmd(self, interaction: discord.Interaction):
         if not self.client:
-            await ctx.reply("A Steam kliens még nem készült el.", ephemeral=True)
+            await interaction.response.send_message("A Steam kliens még nem készült el.", ephemeral=True)
             return
+        await interaction.response.defer(thinking=True)
 
         import random
         items = await self.client.search_app("a")
         if not items:
-            embed = discord.Embed(description="❌ Nem sikerült találni játékot.")
-            await ctx.reply(embed=embed)
+            await interaction.followup.send(embed=discord.Embed(description="❌ Nem sikerült találni játékot."))
             return
 
         game = random.choice(items)
         details = await self.client.get_app_details(game["id"])
         if not details:
-            embed = discord.Embed(description="❌ Nem sikerült lekérni az adatokat.")
-            await ctx.reply(embed=embed)
+            await interaction.followup.send(embed=discord.Embed(description="❌ Nem sikerült lekérni az adatokat."))
             return
+
         price_str = SteamStoreClient.format_price(details)
-        embed = discord.Embed(title=details.get("name","Ismeretlen"), url=f"https://store.steampowered.com/app/{game['id']}", description=details.get("short_description",""))
+        embed = discord.Embed(
+            title=details.get("name","Ismeretlen"),
+            url=f"https://store.steampowered.com/app/{game['id']}",
+            description=details.get("short_description","")
+        )
         header_image = details.get("header_image")
         if header_image:
             embed.set_image(url=header_image)
         embed.add_field(name="Ár", value=price_str, inline=True)
-        await ctx.reply(embed=embed)
-    
-    @commands.command(name="status")
-    async def status_cmd(self, ctx, *, query: str):
+        await interaction.followup.send(embed=embed)
+
+    @app_commands.command(name="status", description="Multiplayer/Co-op/Korhatár/Értékelés")
+    @app_commands.describe(query="Add meg a játék nevét vagy AppID-ját")
+    async def status_cmd(self, interaction: discord.Interaction, query: str):
         if not self.client:
-            await ctx.reply("A Steam kliens még nem készült el.")
+            await interaction.response.send_message("A Steam kliens még nem készült el.")
             return
+        await interaction.response.defer(thinking=True)
 
         if query.isdigit():
             appid = int(query)
         else:
             items = await self.client.search_app(query)
             if not items:
-                await ctx.reply("Nincs találat erre a névre.")
+                await interaction.followup.send("Nincs találat erre a névre.")
                 return
             appid = items[0]["id"]
 
         details = await self.client.get_app_details(appid)
         if not details:
-            await ctx.reply("Nem sikerült lekérni az adatokat.")
+            await interaction.followup.send("Nem sikerült lekérni az adatokat.")
             return
 
         categories = [c["description"] for c in details.get("categories", [])]
@@ -281,24 +290,24 @@ class SteamCog(commands.Cog):
         header_image = details.get("header_image")
         if header_image:
             embed.set_image(url=header_image)
-
         embed.add_field(name="Multiplayer", value=multiplayer, inline=True)
         embed.add_field(name="Co-op", value=coop, inline=True)
         embed.add_field(name="Korhatár", value=age_str, inline=True)
         embed.add_field(name="Értékelés", value=rating_str, inline=True)
 
-        await ctx.reply(embed=embed)
+        await interaction.followup.send(embed=embed)
 
-
-    @commands.command(name="compare")
-    async def compare_cmd(self, ctx, *, query: str):
+    @app_commands.command(name="compare", description="Két játék összehasonlítása (vesszővel elválasztva)")
+    @app_commands.describe(query="Pl.: Counter-Strike 2, Grand Theft Auto V")
+    async def compare_cmd(self, interaction: discord.Interaction, query: str):
         if not self.client:
-            await ctx.reply("A Steam kliens még nem készült el.")
+            await interaction.response.send_message("A Steam kliens még nem készült el.")
             return
+        await interaction.response.defer(thinking=True)
 
         games = [q.strip() for q in query.split(",")]
         if len(games) != 2:
-            await ctx.reply("Kérlek pontosan két játékot adj meg vesszővel elválasztva.")
+            await interaction.followup.send("Kérlek pontosan két játékot adj meg vesszővel elválasztva.")
             return
 
         results = []
@@ -308,12 +317,12 @@ class SteamCog(commands.Cog):
             else:
                 items = await self.client.search_app(game)
                 if not items:
-                    await ctx.reply(f"Nincs találat erre a névre: {game}")
+                    await interaction.followup.send(f"Nincs találat erre a névre: {game}")
                     return
                 appid = items[0]["id"]
             details = await self.client.get_app_details(appid)
             if not details:
-                await ctx.reply(f"Nem sikerült lekérni az adatokat: {game}")
+                await interaction.followup.send(f"Nem sikerült lekérni az adatokat: {game}")
                 return
             results.append({"appid": appid, "name": details.get("name","Ismeretlen"), "details": details})
 
@@ -321,14 +330,15 @@ class SteamCog(commands.Cog):
             s = 0
             po = details.get("price_overview")
             price = po.get("final",0)/100 if po else 0
-            s += 100 - price
+            s += max(0, 100 - price)
             release = details.get("release_date", {}).get("date", "1970-01-01")
             try:
-                s += int(release.split("-")[0])
-            except:
-                s += 0
-            rating = details.get("metacritic", {}).get("score")
-            s += rating if rating else 0
+                year = int(release.split("-")[0])
+            except Exception:
+                year = 0
+            s += year
+            rating = details.get("metacritic", {}).get("score") or 0
+            s += rating
             return s
 
         score0 = score(results[0]["details"])
@@ -350,7 +360,7 @@ class SteamCog(commands.Cog):
         if header_image:
             embed.set_image(url=header_image)
 
-        await ctx.reply(embed=embed)
+        await interaction.followup.send(embed=embed)
 
     @tasks.loop(minutes=10)
     async def discount_check(self):
@@ -360,7 +370,8 @@ class SteamCog(commands.Cog):
             channel = self.bot.get_channel(int(ch_id))
             if not channel:
                 continue
-            for appid in apps:
+            for app in apps:
+                appid = app["appid"] if isinstance(app, dict) else app
                 details = await self.client.get_app_details(appid)
                 if not details:
                     continue
@@ -372,4 +383,17 @@ class SteamCog(commands.Cog):
             asyncio.create_task(self.session.close())
 
 async def setup(bot):
-    await bot.add_cog(SteamCog(bot))
+    cog = SteamCog(bot)
+    await bot.add_cog(cog)
+    try:
+        bot.tree.add_command(cog.game_cmd)
+        bot.tree.add_command(cog.watch_cmd)
+        bot.tree.add_command(cog.unwatch_cmd)
+        bot.tree.add_command(cog.watchlist_cmd)
+        bot.tree.add_command(cog.discount_cmd)
+        bot.tree.add_command(cog.randomgame_cmd)
+        bot.tree.add_command(cog.status_cmd)
+        bot.tree.add_command(cog.compare_cmd)
+        print("Slash parancsok a fába felvéve.")
+    except Exception as e:
+        print("Hiba az app parancsok felvételekor:", e)
