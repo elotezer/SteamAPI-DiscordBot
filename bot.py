@@ -32,7 +32,7 @@ def console_listener(bot):
     while True:
         cmd = input()
         if cmd.lower() == "stop":
-            print("Bot leállítva...")
+            print("Bot leállítása...")
             asyncio.run_coroutine_threadsafe(bot.close(), bot.loop)
             break
 
