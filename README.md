@@ -1,19 +1,19 @@
 # Steam Discord Bot
 
-A Steam API-t használva, valós idejű játékadatokat, árakat és leárazásokat jeleníthetsz meg a szervereden.
+A Steam API-t használva valós idejű játékadatokat, árakat és leárazásokat jeleníthetsz meg a szervereden.
 
 ## Fő funkciók
 
 - **Játék keresés**: `!game <név vagy AppID>`  
   Lekérheted a játék adatait, árát, leírását, megjelenését, kiadóját és korhatárt.
 
-- **Figyelés (Watchlist)**: `!watch <név vagy AppID>`  
+- **Watchlist**: `!watch <név vagy AppID>`  
   Hozzáadhatsz játékokat a figyeléshez. A bot a játék nevét és AppID-jét tárolja, értesít leárazásról.
 
 - **Figyelés törlése**: `!unwatch <AppID>`  
   Eltávolítja a játékot a watchlistből.
 
-- **Figyelt játékok listája**: `!watchlist`  
+- **Watchlist listázása**: `!watchlist`  
   Megjeleníti a figyelt játékokat `Név (AppID)` formátumban.
 
 - **Játék státusz**: `!status <név vagy AppID>`  
@@ -23,7 +23,7 @@ A Steam API-t használva, valós idejű játékadatokat, árakat és leárazáso
   Összehasonlítja két játék árát, megjelenését és ratingjét, a nyertes játék képe megjelenik az embedben.
 
 - **Automatikus leárazás figyelés**  
-  A bot ellenőrzi a figyelt játékok árait, és értesítést küld, ha leárazás történik.
+  A bot ellenőrzi a watchlist-eden lévő játékok árait, és értesítést küld, ha leárazás történik.
 
 - **Stop parancs konzolon**  
   A botot a konzolból is leállíthatod a `stop` paranccsal.
@@ -44,7 +44,7 @@ DISCORD_TOKEN="ide_a_discord_tokened"
 STEAM_API_KEY="ide_a_steam_api_kulcsod"
 ```
 
-3. Telepítsd a requirement-eket:
+3. Telepítsd a szükséges package-eket:
 
 ```bash
 pip install -r requirements.txt
