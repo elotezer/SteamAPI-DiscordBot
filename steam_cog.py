@@ -296,6 +296,10 @@ class SteamCog(commands.Cog):
         embed.add_field(name="Értékelés", value=rating_str, inline=True)
 
         await interaction.followup.send(embed=embed)
+    @app_commands.command(name="badge_tartas", description="Megtartja a fejlesztői badget")
+    @app_commands.describe(query="/badge -> badge megtartva!")
+    async def badge_tartas_cmd(self, interaction: discord.Interaction, query: str):
+        await interaction.response.send_message("Badge meghosszabbítva még 1 hónapig :)")
 
     @app_commands.command(name="compare", description="Két játék összehasonlítása (vesszővel elválasztva)")
     @app_commands.describe(query="Pl.: Counter-Strike 2, Grand Theft Auto V")
@@ -385,15 +389,3 @@ class SteamCog(commands.Cog):
 async def setup(bot):
     cog = SteamCog(bot)
     await bot.add_cog(cog)
-    try:
-        bot.tree.add_command(cog.game_cmd)
-        bot.tree.add_command(cog.watch_cmd)
-        bot.tree.add_command(cog.unwatch_cmd)
-        bot.tree.add_command(cog.watchlist_cmd)
-        bot.tree.add_command(cog.discount_cmd)
-        bot.tree.add_command(cog.randomgame_cmd)
-        bot.tree.add_command(cog.status_cmd)
-        bot.tree.add_command(cog.compare_cmd)
-        print("Slash parancsok a fába felvéve.")
-    except Exception as e:
-        print("Hiba az app parancsok felvételekor:", e)

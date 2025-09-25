@@ -20,13 +20,10 @@ class MyBot(commands.Bot):
 
     async def setup_hook(self):
         await self.load_extension("steam_cog")
-        if self.guild_id:
-            guild_obj = discord.Object(id=self.guild_id)
-            await self.tree.sync(guild=guild_obj)
-            print(f"Slash parancsok szinkronizálva a guildre: {self.guild_id}")
-        else:
-            cmds = await self.tree.sync()
-            print(f"Slash parancsok globálisan szinkronizálva: {len(cmds)} db")
+        if GUILD_ID and GUILD_ID.isdigit():
+            guild = discord.Object(id=int(GUILD_ID))
+            self.tree.copy_global_to(guild=guild)
+            await self.tree.sync(guild=guild)
 
 bot = MyBot()
 
